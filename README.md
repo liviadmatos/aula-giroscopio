@@ -1,50 +1,61 @@
-# Welcome to your Expo app 👋
+# Giroscópio Game
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Jogo simples criado com Expo + React Native, em que o jogador controla uma bolinha laranja usando o giroscópio do celular e tenta coletar orbes azuis.
 
-## Get started
+## Como funciona
 
-1. Install dependencies
+O objetivo do jogo é coletar o maior número de orbes possíveis dentro do tempo disponível.
 
-   ```bash
-   npm install
-   ```
+- a bolinha laranja representa o jogador
+- a bolinha azul representa o alvo
+- o sensor do giroscópio controla o movimento da bolinha principal
+- ao coletar um orbe, o placar aumenta e o orbe aparece em outra posição
 
-2. Start the app
+## Movimento
 
-   ```bash
-   npx expo start
-   ```
+A movimentação foi ajustada para ficar mais natural e estável:
 
-In the output, you'll find options to open the app in a
+- quando o celular é inclinado para a direita, a bolinha vai para a direita
+- quando o celular é inclinado para a esquerda, a bolinha vai para a esquerda
+- quando o celular é inclinado para cima, a bolinha desce
+- quando o celular é inclinado para baixo, a bolinha sobe
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+A lógica usa os dados do giroscópio e aplica uma suavização para evitar que o movimento fique brusco ou instável. Em vez de reagir de forma abrupta, a bolinha ganha velocidade progressivamente e mantém um movimento mais fluido.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Ajustes da versão atual
 
-## Get a fresh project
+A versão atual foi refinada em relação à primeira tentativa e apresenta melhorias importantes:
 
-When you're ready, run:
+- movimento mais fluido e menos travado
+- resposta correta da direção do aparelho
+- bloqueio das bordas para que a bolinha não saia da tela
+- geração do orbe em posições seguras, sem ficar muito próximo da borda
+- contador de tempo e placar para a partida
+- tela de início e reinício da partida
+
+## Como iniciar
+
+1. Instale as dependências:
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. Inicie o projeto:
 
-## Learn more
+```bash
+npx expo start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+3. Abra no emulador ou no dispositivo com Expo Go.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Tecnologias usadas
 
-## Join the community
+- React Native
+- Expo
+- expo-sensors
+- JavaScript / TypeScript
 
-Join our community of developers creating universal apps.
+## Objetivo do projeto
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Este projeto foi desenvolvido como uma demonstração prática de uso do giroscópio em aplicativos móveis, com uma interação simples e visualmente clara.
