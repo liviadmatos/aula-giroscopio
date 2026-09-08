@@ -3,6 +3,9 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Platform,
+  SafeAreaView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,10 +16,10 @@ const { width, height } = Dimensions.get("window");
 
 const PLAYER_SIZE = 52;
 const ORB_SIZE = 30;
-const PLAYER_MARGIN = 28;
+const PLAYER_MARGIN = 30;
 const ORB_MARGIN = 42;
 const ARENA_TOP = 120;
-const ARENA_BOTTOM_MARGIN = 28;
+const ARENA_BOTTOM_MARGIN = 120;
 
 const GAME_DURATION = 20; // segundos de partida
 const COUNTDOWN_DURATION = 3; // segundos de contagem regressiva
@@ -26,9 +29,9 @@ const COUNTDOWN_DURATION = 3; // segundos de contagem regressiva
 // giroscópio (o que causava tremedeira e paradas bruscas), tratamos o tilt
 // do celular como ACELERAÇÃO. A bolinha ganha velocidade suavemente e perde
 // velocidade aos poucos (fricção), como um objeto real rolando.
-const ACCELERATION = 1.7; // o quanto o tilt acelera a bolinha
+const ACCELERATION = 0.7; // o quanto o tilt acelera a bolinha
 const FRICTION = 0.93; // 0-1: quanto mais perto de 1, mais "deslizante"
-const MAX_SPEED = 15; // velocidade máxima em px por frame
+const MAX_SPEED = 6; // velocidade máxima em px por frame
 const SMOOTHING = 0.18; // filtro passa-baixa para remover ruído do sensor
 
 const clamp = (value: number, min: number, max: number) =>
@@ -136,7 +139,7 @@ export default function App() {
         const minX = PLAYER_MARGIN;
         const maxX = width - PLAYER_SIZE - PLAYER_MARGIN;
         const minY = ARENA_TOP;
-        const maxY = height - PLAYER_SIZE - ARENA_BOTTOM_MARGIN - 10;
+        const maxY = height - PLAYER_SIZE - ARENA_BOTTOM_MARGIN;
 
         if (nextX < minX) {
           nextX = minX;
@@ -226,165 +229,229 @@ export default function App() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.backgroundGlow} />
-      <View style={styles.arena} />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.container}>
+        {/* Camadas de fundo — a ordem de renderização define o empilhamento
+            visual, então não precisamos de zIndex em nenhum lugar. */}
+        <View style={styles.glowTopLeft} />
+        <View style={styles.glowBottomRight} />
+        <View style={styles.arena}>
+          <View style={styles.arenaInnerBorder} />
+        </View>
 
-      <View style={styles.hud}>
-        <Text style={styles.title}>Giroscópio Game</Text>
-        <View style={styles.badgesRow}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeLabel}>TEMPO</Text>
-            <Text
+        {gameState === "playing" && (
+          <>
+            <View
               style={[
-                styles.badgeValue,
-                timeLeft <= 5 &&
-                  gameState === "playing" &&
-                  styles.badgeValueUrgent,
+                styles.orb,
+                { left: orbPosition.x, top: orbPosition.y },
               ]}
             >
-              {timeLeft}s
-            </Text>
+              <View style={styles.orbHighlight} />
+            </View>
+
+            <Animated.View
+              style={[
+                styles.player,
+                {
+                  transform: [{ translateX: pos.x }, { translateY: pos.y }],
+                },
+              ]}
+            >
+              <View style={styles.playerHighlight} />
+            </Animated.View>
+          </>
+        )}
+
+        {/* HUD renderizado depois da bolinha/orbe para garantir que fique
+            sempre visível por cima, sem depender de zIndex. */}
+        <View style={styles.hud}>
+          <View>
+            <Text style={styles.eyebrow}>MINIGAME</Text>
+            <Text style={styles.title}>Giroscópio</Text>
           </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeLabel}>PONTOS</Text>
-            <Text style={styles.badgeValue}>{score}</Text>
+          <View style={styles.badgesRow}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeLabel}>Tempo</Text>
+              <Text
+                style={[
+                  styles.badgeValue,
+                  timeLeft <= 5 &&
+                    gameState === "playing" &&
+                    styles.badgeValueUrgent,
+                ]}
+              >
+                {timeLeft}s
+              </Text>
+            </View>
+            <View style={[styles.badge, styles.badgeAccent]}>
+              <Text style={styles.badgeLabel}>Pontos</Text>
+              <Text style={styles.badgeValue}>{score}</Text>
+            </View>
           </View>
         </View>
+
+        {gameState === "countdown" && (
+          <View style={styles.overlay}>
+            <View style={styles.overlayCard}>
+              <Text style={styles.overlayHint}>Prepare-se</Text>
+              <Text style={styles.countdownText}>
+                {countdown > 0 ? countdown : "Vai!"}
+              </Text>
+              <Text style={styles.overlaySubtext}>
+                Incline o celular para mover a bolinha
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {gameState === "finished" && (
+          <View style={styles.overlay}>
+            <View style={styles.overlayCard}>
+              <Text style={styles.finishedTitle}>Tempo esgotado!</Text>
+              <Text style={styles.finishedScore}>{score}</Text>
+              <Text style={styles.finishedLabel}>
+                {score === 1 ? "orbe coletado" : "orbes coletados"}
+              </Text>
+              <TouchableOpacity
+                style={styles.button}
+                activeOpacity={0.85}
+                onPress={handleRestart}
+              >
+                <Text style={styles.buttonText}>Jogar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
-
-      {gameState === "playing" && (
-        <>
-          <Text style={styles.instructions}>Colete o orbe azul!</Text>
-
-          <View
-            style={[styles.orb, { left: orbPosition.x, top: orbPosition.y }]}
-          />
-
-          <Animated.View
-            style={[
-              styles.player,
-              {
-                transform: [{ translateX: pos.x }, { translateY: pos.y }],
-              },
-            ]}
-          />
-        </>
-      )}
-
-      {gameState === "countdown" && (
-        <View style={styles.overlay}>
-          <Text style={styles.overlayHint}>Prepare-se</Text>
-          <Text style={styles.countdownText}>
-            {countdown > 0 ? countdown : "Vai!"}
-          </Text>
-        </View>
-      )}
-
-      {gameState === "finished" && (
-        <View style={styles.overlay}>
-          <Text style={styles.finishedTitle}>Tempo esgotado!</Text>
-          <Text style={styles.finishedScore}>{score}</Text>
-          <Text style={styles.finishedLabel}>
-            {score === 1 ? "orbe coletado" : "orbes coletados"}
-          </Text>
-          <TouchableOpacity
-            style={styles.button}
-            activeOpacity={0.85}
-            onPress={handleRestart}
-          >
-            <Text style={styles.buttonText}>Jogar novamente</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#050d16",
+  },
   container: {
     flex: 1,
-    backgroundColor: "#06131f",
+    backgroundColor: "#050d16",
   },
-  backgroundGlow: {
+  glowTopLeft: {
     position: "absolute",
-    top: -120,
-    left: -80,
-    right: -80,
-    height: 300,
-    backgroundColor: "rgba(52, 152, 219, 0.22)",
+    top: -140,
+    left: -100,
+    width: 320,
+    height: 320,
     borderRadius: 200,
+    backgroundColor: "rgba(56, 189, 248, 0.16)",
+  },
+  glowBottomRight: {
+    position: "absolute",
+    bottom: -140,
+    right: -100,
+    width: 320,
+    height: 320,
+    borderRadius: 200,
+    backgroundColor: "rgba(255, 127, 80, 0.10)",
   },
   arena: {
     position: "absolute",
-    top: 80,
-    left: 16,
-    right: 16,
-    bottom: 28,
-    backgroundColor: "rgba(15, 35, 55, 0.85)",
+    top: 84,
+    left: 18,
+    right: 18,
+    bottom: 26,
+    backgroundColor: "rgba(13, 30, 48, 0.78)",
     borderWidth: 1,
-    borderColor: "rgba(125, 211, 252, 0.5)",
-    borderRadius: 30,
+    borderColor: "rgba(125, 211, 252, 0.35)",
+    borderRadius: 28,
+    overflow: "hidden",
     shadowColor: "#38bdf8",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 18,
-    elevation: 12,
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  arenaInnerBorder: {
+    flex: 1,
+    margin: 6,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(224, 242, 254, 0.06)",
   },
   hud: {
     position: "absolute",
-    top: 36,
-    left: 24,
-    right: 24,
+    top: Platform.select({ ios: 30, android: 36, default: 32 }),
+    left: 16,
+    right: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    zIndex: 2,
+    backgroundColor: "rgba(8, 22, 36, 0.92)",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(125, 211, 252, 0.18)",
+  },
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "rgba(125, 211, 252, 0.75)",
+    letterSpacing: 1.5,
+    marginBottom: 2,
   },
   title: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#e0f2fe",
-    letterSpacing: 0.5,
+    fontWeight: "800",
+    color: "#f0f9ff",
+    letterSpacing: 0.3,
   },
   badgesRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
   },
   badge: {
-    backgroundColor: "rgba(14, 116, 144, 0.55)",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(125, 211, 252, 0.6)",
+    borderColor: "rgba(148, 163, 184, 0.25)",
     alignItems: "center",
-    minWidth: 64,
+    minWidth: 62,
+  },
+  badgeAccent: {
+    backgroundColor: "rgba(56, 189, 248, 0.14)",
+    borderColor: "rgba(56, 189, 248, 0.4)",
   },
   badgeLabel: {
     fontSize: 9,
     fontWeight: "700",
-    color: "rgba(224, 242, 254, 0.7)",
-    letterSpacing: 1,
+    color: "rgba(224, 242, 254, 0.55)",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
   badgeValue: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
     color: "#f0f9ff",
+    marginTop: 1,
   },
   badgeValueUrgent: {
     color: "#fca5a5",
   },
   instructions: {
     position: "absolute",
-    top: 82,
+    top: 96,
     left: 0,
     right: 0,
     textAlign: "center",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "600",
-    color: "#dbeafe",
-    zIndex: 2,
+    color: "rgba(219, 234, 254, 0.85)",
+    letterSpacing: 0.2,
   },
   player: {
     position: "absolute",
@@ -395,13 +462,23 @@ const styles = StyleSheet.create({
     borderRadius: PLAYER_SIZE / 2,
     backgroundColor: "#ff7f50",
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.9)",
+    borderColor: "rgba(255,255,255,0.85)",
     shadowColor: "#ff7f50",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 12,
-    elevation: 12,
-    zIndex: 2,
+    shadowOpacity: 0.75,
+    shadowRadius: 14,
+    elevation: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  playerHighlight: {
+    position: "absolute",
+    top: 6,
+    left: 8,
+    width: PLAYER_SIZE * 0.4,
+    height: PLAYER_SIZE * 0.25,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.35)",
   },
   orb: {
     position: "absolute",
@@ -410,13 +487,23 @@ const styles = StyleSheet.create({
     borderRadius: ORB_SIZE / 2,
     backgroundColor: "#38bdf8",
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.9)",
+    borderColor: "rgba(255,255,255,0.85)",
     shadowColor: "#38bdf8",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
-    elevation: 10,
-    zIndex: 2,
+    shadowOpacity: 0.85,
+    shadowRadius: 14,
+    elevation: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orbHighlight: {
+    position: "absolute",
+    top: 4,
+    left: 5,
+    width: ORB_SIZE * 0.35,
+    height: ORB_SIZE * 0.22,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.45)",
   },
   overlay: {
     position: "absolute",
@@ -424,64 +511,84 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(6, 19, 31, 0.88)",
+    backgroundColor: "rgba(5, 13, 22, 0.82)",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 5,
+    paddingHorizontal: 28,
+  },
+  overlayCard: {
+    width: "100%",
+    maxWidth: 340,
+    alignItems: "center",
+    backgroundColor: "rgba(13, 30, 48, 0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(125, 211, 252, 0.25)",
+    borderRadius: 28,
+    paddingVertical: 36,
+    paddingHorizontal: 24,
   },
   overlayHint: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "rgba(224, 242, 254, 0.7)",
-    letterSpacing: 2,
-    marginBottom: 12,
+    fontSize: 14,
+    fontWeight: "700",
+    color: "rgba(224, 242, 254, 0.6)",
+    letterSpacing: 3,
+    marginBottom: 14,
     textTransform: "uppercase",
   },
   countdownText: {
-    fontSize: 96,
+    fontSize: 84,
     fontWeight: "800",
     color: "#38bdf8",
-    textShadowColor: "rgba(56, 189, 248, 0.6)",
+    textShadowColor: "rgba(56, 189, 248, 0.5)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 24,
   },
+  overlaySubtext: {
+    marginTop: 18,
+    fontSize: 13,
+    fontWeight: "500",
+    color: "rgba(224, 242, 254, 0.55)",
+    textAlign: "center",
+  },
   finishedTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
     color: "#e0f2fe",
-    marginBottom: 16,
+    marginBottom: 18,
+    letterSpacing: 0.3,
   },
   finishedScore: {
-    fontSize: 88,
+    fontSize: 76,
     fontWeight: "800",
     color: "#ff7f50",
-    textShadowColor: "rgba(255, 127, 80, 0.6)",
+    textShadowColor: "rgba(255, 127, 80, 0.5)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 24,
   },
   finishedLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
-    color: "rgba(224, 242, 254, 0.75)",
-    marginBottom: 36,
+    color: "rgba(224, 242, 254, 0.7)",
+    marginBottom: 32,
+    marginTop: 4,
   },
   button: {
     backgroundColor: "#0ea5e9",
-    paddingHorizontal: 32,
-    paddingVertical: 16,
+    paddingHorizontal: 30,
+    paddingVertical: 15,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(125, 211, 252, 0.8)",
+    borderColor: "rgba(224, 242, 254, 0.5)",
     shadowColor: "#0ea5e9",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.55,
     shadowRadius: 16,
     elevation: 8,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#f0f9ff",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
 });
